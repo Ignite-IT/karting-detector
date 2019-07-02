@@ -1,0 +1,13 @@
+tensorflow
+numpy
+scipy
+opencv-python
+pillow
+matplotlib
+h5py
+keras
+tesseract
+pytesseract
+imutils
+pyzbar
+git+https://github.com/edunola13/opencv_utils
