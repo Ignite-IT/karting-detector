@@ -69,7 +69,7 @@ class ShapeDetector:
         return shape, approx
 
 
-def check_barcodes(cnts):
+def check_barcodes(frame, cnts):
     positions = []
     sd = ShapeDetector()
     sorted_cnts = sorted(cnts, key=lambda c: cv2.boundingRect(c)[0], reverse=False)
@@ -117,7 +117,7 @@ def bytes_to_number(positions):
     return number
 
 
-def countours_analize(frame, timestamp):
+def countours_analize(frame, timestamp, cars_detected):
     sd = ShapeDetector()
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (7, 7), 0)
@@ -183,12 +183,12 @@ def countours_analize(frame, timestamp):
             if extent < 0.5 or extent > 1:
                 continue
 
-            positions = check_barcodes(childs_cnts)
+            positions = check_barcodes(frame, childs_cnts)
             number = bytes_to_number(positions)
             if len(positions) != CANT_BYTES:
                 continue
-            print ('NUMERO: %d, %d' % (number, timestamp))
-            cars_detected.put({'time': time.time(), 'number': number})
+            print ('NUMERO: %d, %f' % (number, timestamp))
+            cars_detected.put({'timestamp': timestamp, 'number': number})
 
             # crop_img = frame[y:y+h, x:x+w]
             # cv2.imshow("cropped", crop_img)
@@ -202,46 +202,43 @@ def countours_analize(frame, timestamp):
     # cv2.putText(frame, status, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
     cv2.imshow('frame', frame)
 
-# HOW USE
-# video = VideoCapture('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998')
-q = Queue()
-# video = VideoCaptureThread('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998', max_queue=10)
-video = VideoCaptureThread(1, max_queue=10)
-# video = VideoCaptureThread('udp://@192.168.10.1:11111')  # Comandos: 'command', 'streamon'
-video.start(q)
-# video = VideoCapture(0)
-# image_writer = ImageWriter('data_tests/dia_20190709/img_', 'png')
-# video_writer = VideoWriter('saves/drone_1')
 
-# initial = time.time()
-# img = cv2.imread("data_tests/dia_20190707/img_20190707-182011_29.png")
+def run_barcode_detector(cars_detected):
+    # HOW USE
+    # video = VideoCapture('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998')
+    q = Queue()
+    # video = VideoCaptureThread('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998', max_queue=10)
+    video = VideoCaptureThread(0, max_queue=100)
+    # video = VideoCaptureThread('udp://@192.168.10.1:11111')  # Comandos: 'command', 'streamon'
+    video.start(q)
+    # video = VideoCapture(0)
+    # image_writer = ImageWriter('data_tests/dia_20190709/img_', 'png')
+    # video_writer = VideoWriter('saves/drone_1')
 
-cars_detected = Queue()
-#
-# CREAR THREAD QUE ANALICE LOS AUTOS DETECTADOS Y LOS ENVIE A DONDE CORRESPONDA
-#
-# while True:
-while(video.is_opened()):
-    print (q.qsize())
-    # frame = img
-    # timestamp = time.time()
+    # initial = time.time()
+    # img = cv2.imread("data_tests/dia_20190707/img_20190707-182011_29.png")
 
-    ret, frame = video.read()
+    # while True:
+    while(video.is_opened()):
+        # frame = img
+        # timestamp = time.time()
 
-    data = q.get()
-    frame = data['frame']
-    timestamp = data['time']
+        # ret, frame = video.read()
+        # print (q.qsize())
+        data = q.get()
+        frame = data['frame']
+        timestamp = data['time']
 
-    # image_writer.save_frame(frame)
-    # video_writer.save_frame(frame)
+        # image_writer.save_frame(frame)
+        # video_writer.save_frame(frame)
 
-    countours_analize(frame, timestamp)
+        countours_analize(frame, timestamp, cars_detected)
 
-    # cv2.waitKey(0)
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+        # cv2.waitKey(0)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
 
-# Stop Thread
-video.stop()
-# Release everything if job is finished
-cv2.destroyAllWindows()
+    # Stop Thread
+    video.stop()
+    # Release everything if job is finished
+    cv2.destroyAllWindows()

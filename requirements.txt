@@ -11,3 +11,5 @@ pytesseract
 imutils
 pyzbar
 git+https://github.com/edunola13/opencv_utils
+
+tornado
