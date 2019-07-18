@@ -7,7 +7,7 @@ from queue import Queue
 
 # import imutils  # Esta libreria sirve para manejar las diferentes versiones de OpenCv.
 
-from enola_opencv_utils.rw_frames import VideoCapture, VideoWriter, VideoCaptureThread, ImageWriter
+from enola_opencv_utils.rw_frames import VideoCaptureThread
 
 CANT_BYTES = 4
 
@@ -203,12 +203,17 @@ def countours_analize(frame, timestamp, cars_detected):
     cv2.imshow('frame', frame)
 
 
-def run_barcode_detector(cars_detected):
+def run_barcode_detector(cars_detected, config):
+    settings = [
+        [cv2.CAP_PROP_FRAME_WIDTH, int(config.get('CAMERA', 'WIDTH'))],
+        [cv2.CAP_PROP_FRAME_HEIGHT, int(config.get('CAMERA', 'HEIGHT'))],
+        [cv2.CAP_PROP_FPS, int(config.get('CAMERA', 'FPS'))]
+    ]
     # HOW USE
     # video = VideoCapture('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998')
     q = Queue()
     # video = VideoCaptureThread('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998', max_queue=10)
-    video = VideoCaptureThread(0, max_queue=100)
+    video = VideoCaptureThread(int(config.get('CAMERA', 'PATH')), max_queue=100, settings=settings)
     # video = VideoCaptureThread('udp://@192.168.10.1:11111')  # Comandos: 'command', 'streamon'
     video.start(q)
     # video = VideoCapture(0)

@@ -131,3 +131,11 @@ builder/config.py
 
 # Images and data tests
 data_tests/
+
+# Config
+config/config.ini
+config/logging.ini
+
+# Logs
+logging.log
+logging-error.log
