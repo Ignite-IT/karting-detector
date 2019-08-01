@@ -4,7 +4,7 @@ import logging.config
 
 from multiprocessing import Process, Queue
 
-from detector.barcode_detector import run_barcode_detector
+from detector.detector import run_barcode_detector
 from detector.ws_client import ClientWebSocket
 
 logging.config.fileConfig('config/logging.ini')
