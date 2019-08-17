@@ -41,18 +41,19 @@ class StrategyDetectorDigits(StrategyDetector):
         for c in cnts:
             index += 1
 
-            if not self.is_contour_valid(index, c, cnts, hierarchy):
+            if not self.is_contour_valid(index, c, cnts, hierarchy, frame):
                 continue
 
-            hierarchy_w = hierarchy[0]
+            # hierarchy_w = hierarchy[0]
             # childs_info = [hierarchy_w[i] for i in range(len(hierarchy_w)) if (hierarchy_w[i][3] == index)]
-            childs_cnts = [cnts[i] for i in range(len(cnts)) if hierarchy_w[i][3] == index]
+            # childs_cnts = [cnts[i] for i in range(len(cnts)) if hierarchy_w[i][3] == index]
             if self.manager.show_video:
-                cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
+                # cv2.drawContours(frame, childs_cnts, -1, (0, 255, 255), 2)
+                pass
 
             sd = ShapeDetector()
             shape, approx = sd.detect(c, 0.1)
-            number = int(self.check_digits(frame, gray, approx, childs_cnts))
+            number = int(self.check_digits(frame, gray, approx))
 
             logging.debug('NUMERO: %d, %f' % (number, timestamp))
             self.manager.detections.put({'timestamp': timestamp, 'number': number})
@@ -64,14 +65,15 @@ class StrategyDetectorDigits(StrategyDetector):
                 # https://docs.opencv.org/3.1.0/d4/d73/tutorial_py_contours_begin.html
                 # Dibujo el contour aproximado, no el real
                 # cv2.drawContours(frame, [box], -1, (0, 0, 255), 2)
-                cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
+                # cv2.drawContours(frame, [c], -1, (0, 255, 0), 2)
+                pass
 
         if self.manager.show_video:
             # draw the status text on the frame
             # cv2.putText(frame, status, (20, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
             cv2.imshow('frame', frame)
 
-    def is_contour_valid(self, index, c, cnts, hierarchy):
+    def is_contour_valid(self, index, c, cnts, hierarchy, frame):
         sd = ShapeDetector()
 
         m = cv2.moments(c)
@@ -89,7 +91,7 @@ class StrategyDetectorDigits(StrategyDetector):
         # Buscar hijos y que haya la misma cantidad que CANT_DIGITS
         hierarchy_w = hierarchy[0]
         childs_index = [i for i in range(len(hierarchy_w)) if (hierarchy_w[i][3] == index)]
-        if len(childs_index) != self.cant_digits:
+        if len(childs_index) < self.cant_digits:
             return False
 
         # https://docs.opencv.org/trunk/d1/d32/tutorial_py_contour_properties.html
@@ -106,26 +108,31 @@ class StrategyDetectorDigits(StrategyDetector):
         aspect_ratio_h = float(h) / w
         # CALCULAR LOS ASPECT_RATIO DIVIDIENDO W/H Y H/W YA QUE SEGUN COMO LES DE EN UN MOMENTO SE ROTA
         # ESTO HAY QUE AJUSTARLO SEGUN LA POSICION DEL KARTING
+        #
+        # DEFINIR........................!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        #
         if (aspect_ratio_w < 1.2 or aspect_ratio_w > 2.4) and (aspect_ratio_h < 1.2 or aspect_ratio_h > 2.4):
             return False
 
-        # print (aspect_ratio_w)
-        # print (aspect_ratio_h)
-
         # Relación entre el área de contorno y el área del rectángulo delimitador
         # Ver bien cual es el valor correcto y contourArea conviene con 'c' o 'approx'
-        area = cv2.contourArea(c)
-        x, y, w, h = cv2.boundingRect(c)
+        # Lo que hacemos aca es calcular las areas. boundingRect no toma la rotacion, entonces cuanto mas lejos del 1
+        # este extent mas rotado en Y va a estar. Entonces cuando llega a 0.53 esta demasiado rotado para nosotros.
+        area = cv2.contourArea(approx)
+        x, y, w, h = cv2.boundingRect(approx)
         rect_area = w * h
         extent = float(area) / rect_area
-        if extent < 0.5 or extent > 1:
+        if extent < 0.53 or extent > 1:
             return False
+
+        # print (shape)
+        cv2.drawContours(frame, [approx], -1, (0, 255, 0), 2)
+        # cv2.drawContours(frame, [c], -1, (0, 0, 255), 2)
 
         return True
 
-    def check_digits(self, frame, gray, cnt, cnts):
-        # extract the thermostat display, apply a perspective transform
-        # to it
+    def check_digits(self, frame, gray, cnt):
+        # extract the thermostat display, apply a perspective transform to it
         warped = four_point_transform(gray, cnt.reshape(4, 2))
         output = four_point_transform(frame, cnt.reshape(4, 2))
 
@@ -135,6 +142,11 @@ class StrategyDetectorDigits(StrategyDetector):
                                cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
+        #
+        # ACA PUEDO VER DE AGRANDAR LA IMAGEN SI ES MUY CHICA
+        # VER QUE SE CONSIDERA CHICO
+        # height, width = thresh.shape[:2]
+        # thresh = cv2.resize(thresh, None, fx=4, fy=4)
 
         # find contours in the thresholded image, then initialize the
         # digit contours lists
@@ -147,6 +159,9 @@ class StrategyDetectorDigits(StrategyDetector):
             # compute the bounding box of the contour
             (x, y, w, h) = cv2.boundingRect(c)
             # if the contour is sufficiently large, it must be a digit
+            #
+            # CUIDADO: Este numero se va achicando cuando esta muy lejos la imagen
+            #
             if w < 10 or h < 10:
                 continue
             digit_cnts.append(c)
@@ -197,7 +212,10 @@ class StrategyDetectorDigits(StrategyDetector):
 
                     # if the total number of non-zero pixels is greater than
                     # 50% of the area, mark the segment as "on"
-                    if total / float(area) > 0.5:
+                    #
+                    # CON ESTE NUMERO SE PUEDE JUGAR
+                    # DEFECTO: 0.5
+                    if total / float(area) > 0.4:
                         on[i] = 1
                     cv2.imshow("roi" + str(i), segROI)
 

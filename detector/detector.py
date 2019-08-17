@@ -24,11 +24,15 @@ class ManagerDetector():
         ]
 
         self.q = Queue()
-        self.video = VideoCaptureThread(int(self.config.get('CAMERA', 'PATH')), max_queue=100, settings=settings)        
-        self.video.start(self.q)
+        """
+            ACA PODEMOS METER EL CLIENTE SOCKET
+            TENDRIA LA VENTAJA DE QUE EL SOCKET SERVER NO PERDERIA NADA Y ESTARIA EN UN PROCESO APARTE
+        """
+        self.video = VideoCaptureThread(int(self.config.get('CAMERA', 'PATH')), max_queue=100, settings=settings)
         # video = VideoCapture('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998')
         # video = VideoCaptureThread('http://192.168.0.101:8080/stream/video/mjpeg?resolution=HD&&Username=admin&&Password=ZWR1YXJkb19u&&tempid=0.20093701226258998', max_queue=10)
-        # video = VideoCaptureThread('udp://@192.168.10.1:11111')  # Comandos: 'command', 'streamon'
+        # self.video = VideoCaptureThread('udp://@192.168.10.1:11111', max_queue=100, settings=settings)  # Comandos: 'command', 'streamon'
+        self.video.start(self.q)
 
         # video = VideoCapture(0)
         # image_writer = ImageWriter('data_tests/errors/5/img_', 'png')
@@ -48,7 +52,7 @@ class ManagerDetector():
             # timestamp = time.time()
 
             # ret, frame = video.read()
-            # print (q.qsize())
+            # print (self.q.qsize())
             data = self.q.get()
             frame = data['frame']
             timestamp = data['time']
