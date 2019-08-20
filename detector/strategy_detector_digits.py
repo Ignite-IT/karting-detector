@@ -111,7 +111,7 @@ class StrategyDetectorDigits(StrategyDetector):
         #
         # DEFINIR........................!!!!!!!!!!!!!!!!!!!!!!!!!!!
         #
-        if (aspect_ratio_w < 1.2 or aspect_ratio_w > 2.4) and (aspect_ratio_h < 1.2 or aspect_ratio_h > 2.4):
+        if (aspect_ratio_w < 1 or aspect_ratio_w > 2.4) and (aspect_ratio_h < 1 or aspect_ratio_h > 2.4):
             return False
 
         # Relación entre el área de contorno y el área del rectángulo delimitador
@@ -136,17 +136,26 @@ class StrategyDetectorDigits(StrategyDetector):
         warped = four_point_transform(gray, cnt.reshape(4, 2))
         output = four_point_transform(frame, cnt.reshape(4, 2))
 
+        #
+        # ACA ESTA TODO EL TEMA DE EROSIONAR Y DILATAR.
+        # ACA ESTA LO MAS IMPORTANTE PARA NO AGARRAR ERRORES
+        #
+
         # threshold the warped image, then apply a series of morphological
         # operations to cleanup the thresholded image
         thresh = cv2.threshold(warped, 0, 255,
                                cv2.THRESH_BINARY_INV | cv2.THRESH_OTSU)[1]
         kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (1, 5))
+        # kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 5))
         thresh = cv2.morphologyEx(thresh, cv2.MORPH_OPEN, kernel)
         #
         # ACA PUEDO VER DE AGRANDAR LA IMAGEN SI ES MUY CHICA
         # VER QUE SE CONSIDERA CHICO
         # height, width = thresh.shape[:2]
-        # thresh = cv2.resize(thresh, None, fx=4, fy=4)
+        # thresh = cv2.resize(thresh, None, fx=2, fy=2)
+        # output = cv2.resize(output, None, fx=2, fy=2)
+        #
+        # thresh = cv2.dilate(thresh, kernel, iterations=2)
 
         # find contours in the thresholded image, then initialize the
         # digit contours lists
@@ -161,6 +170,7 @@ class StrategyDetectorDigits(StrategyDetector):
             # if the contour is sufficiently large, it must be a digit
             #
             # CUIDADO: Este numero se va achicando cuando esta muy lejos la imagen
+            # Por ahi es mejor preguntar por un porcentaje del tamano de la imagen
             #
             if w < 10 or h < 10:
                 continue
@@ -177,8 +187,10 @@ class StrategyDetectorDigits(StrategyDetector):
         digits = []
 
         try:
+            index = 0
             # loop over each of the digits
             for c in digit_cnts:
+                index += 1
                 # extract the digit ROI
                 (x, y, w, h) = cv2.boundingRect(c)
                 roi = thresh[y:y + h, x:x + w]
@@ -215,9 +227,10 @@ class StrategyDetectorDigits(StrategyDetector):
                     #
                     # CON ESTE NUMERO SE PUEDE JUGAR
                     # DEFECTO: 0.5
-                    if total / float(area) > 0.4:
+                    if total / float(area) > 0.6:
                         on[i] = 1
-                    cv2.imshow("roi" + str(i), segROI)
+                    if index == 1:
+                        cv2.imshow("roi" + str(i), segROI)
 
                 # lookup the digit and draw it on the image
                 try:
@@ -241,5 +254,6 @@ class StrategyDetectorDigits(StrategyDetector):
         if self.manager.show_video:
             cv2.imshow("Output", output)
             cv2.imshow("Tresh", thresh)
+            # cv2.imshow("Dil", dilation)
 
         return number

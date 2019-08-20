@@ -35,7 +35,7 @@ class ManagerDetector():
         self.video.start(self.q)
 
         # video = VideoCapture(0)
-        # image_writer = ImageWriter('data_tests/errors/5/img_', 'png')
+        # self.image_writer = ImageWriter('data_tests/20190819_4/img_', 'png')
         # video_writer = VideoWriter('saves/drone_1')
 
         # initial = time.time()
@@ -56,6 +56,8 @@ class ManagerDetector():
             data = self.q.get()
             frame = data['frame']
             timestamp = data['time']
+
+            # self.image_writer.save_frame(frame)
 
             self.load_strategy()
             self.strategy.analize(frame, timestamp)
